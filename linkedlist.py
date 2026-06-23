@@ -1,7 +1,19 @@
 class LinkedListNode:
-    def __init__(self, value = None, next = None):
+    def __init__(self, value, next=None):
         self.value = value
         self.next = next
+
+    @staticmethod
+    def from_list(lst):
+        if lst == []: 
+            return None
+        else:
+            sentinel_head = ptr = LinkedListNode(None)
+            for item in lst:
+                ptr.next = LinkedListNode(item)
+                ptr = ptr.next
+
+            return sentinel_head.next
 
     def __repr__(self):
         builder = [str(self.value)]
@@ -44,11 +56,11 @@ class LinkedListNode:
         return self
     
     # helper shifts the pointer to the respective index
-    def helper(self, i):
+    def _get_node(self, i): #user still can call this method 
         ptr = self 
         for i in range(i): 
             if ptr.next is None:
-                raise IndexError("LinkedList is too short")
+                raise IndexError(f"_get_node(): index {i} does not exist")
             else:
                 ptr = ptr.next
         return ptr
@@ -58,113 +70,171 @@ class LinkedListNode:
         if i == 0:
             return self.value
 
-        ptr = self.helper(i)
+        ptr = self._get_node(i)
         return ptr.value
 
     # set(i, value) : mutates the item at index 
     def set(self, i, value):
-        ptr = self.helper(i)
-        ptr.value = value 
+        self._get_node(i).value = value
     
     # delete(i) : deletes the i-th node, returns the new head of the list 
     def delete(self, i):
         if i == 0:
-            new = self.next
-            return new
+            return self.next 
 
-        ptr = self.helper(i - 1)
-        new_node = ptr.next.next
-        ptr.next = new_node
+        ptr = self._get_node(i - 1)
+
+        if ptr.next is None:
+            raise IndexError(f"delete(): index {i} does not exist")
+        
+        ptr.next = ptr.next.next
         return self
 
     # remove(value) : remove the first occurence of value in the linked list, and returns the new head of the list 
     def remove(self, value):
-        ptr = self
-        if ptr.value == value:
-            return ptr.next
+        find_result = self._find_node(lambda x: x == value)
 
-        length = ptr.length_I()
-        for i in range(length - 1):
-            if ptr.next.value == value:
-                ptr.next = ptr.next.next
-                return self
+        if find_result is None:
+            return self
+        else:
+            (i, ptr) = find_result
+            return self.delete(i)
+
+    def _find_node(self, pred): # return index and the node itself 
+        ptr = self 
+        i = 0
+        while ptr is not None:
+            if pred(ptr.value): 
+                return (i, ptr)
             else:
-                ptr = ptr.next
-            
+                ptr = ptr.next 
+                i += 1
+        else:
+            return None 
 
+    # find(p) : return the index of the first occurence  of value satisfying pred, or 'None' if no values satisfies pred
+    def find(self, pred):
+        find_result = self._find_node(pred)
+
+        if find_result is None:
+            return None
+        else:
+            (i, ptr) = find_result
+            return i
+
+    def equals(self, other_list):
+        ptr1, ptr2 = self, other_list
+        while not (ptr1 is None and ptr2 is None):
+            if ptr1 is None or ptr2 is None: 
+                return False
+            elif ptr1.value != ptr2.value:
+                return False
+            else:
+                ptr1 = ptr1.next
+                ptr2 = ptr2.next
+
+        else:
+            return True 
+    
     # map(f) : create a new linked list with f applied to each value. returns the new linked list. 
     #          does not mutate the old list
     def map(self, f):
-        copy_ptr = LinkedListNode(f(self.value), None)
-        result = copy_ptr
+        head = copy_ptr = LinkedListNode(f(self.value), None)
         ptr = self
 
         while ptr.next is not None:
-            new_node = LinkedListNode(f(ptr.next.value), None)
-            copy_ptr.next = new_node
+            copy_ptr.next = LinkedListNode(f(ptr.next.value), None)
             copy_ptr = copy_ptr.next
             ptr = ptr.next
 
-        return result
+        return head
 
     # filter(p) : creates a new linked list with only the values that satisfy the predicate p
     def filter(self, pred):
-        temp = LinkedListNode(None, None)
-        result = temp
+        head = ptr_filter = LinkedListNode(None, None) # sentinel node, not part of the linked list 
         ptr = self  
 
         while ptr is not None:
             if pred(ptr.value):
-                new_node =  LinkedListNode(ptr.value, None)
-                temp.next = new_node
-                temp = temp.next
-            
+                ptr_filter.next =  LinkedListNode(ptr.value, None)
+                ptr_filter = ptr_filter.next
             ptr = ptr.next
         
-        return result.next
+        if head.next is not None:
+            return head.next
+        else:
+            return LinkedListNode(None, None)
 
     # fold(f, acc) : returns left-associative fold. Repeats acc = f(acc, value) for each in the linked list, 
     #                returns the final acc.x
     def fold(self, f, acc):
         ptr = self
-        result = acc 
 
         while ptr is not None:
-            result = f(result, ptr.value)
+            acc = f(acc, ptr.value)
             ptr = ptr.next
         
-        return result
+        return acc
 
-    # middle() : returns the middle node --> 1 loop
+    # middle, simple version 
     def middle(self):
         # i wld just find length and // 2 to find the middle index but technically that will be 2 loops
-        length = self.length_I()
-        mid_index = length // 2
+        return self._get_node(self.length_I() // 2)
 
-        ptr = self
-        target = ptr
-        for i in range(mid_index):
-            target = ptr.value
-            ptr = ptr.next
+    # middle() : returns the middle node --> 1 loop
+    # ptr2 moves twice as fast as ptr1
+    def middle2(self):
+        ptr1 = ptr2 = self
+        while True:
+            if ptr2.next is None or ptr2.next.next is None:
+                return ptr1
+            else:
+                ptr1 = ptr1.next
+                ptr2 = ptr2.next.next
 
-        return target
+
+if __name__ == '__main__':
+
+    reference = LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5, 2]) # remains unchanged 
+    head = LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5, 2])
+    pass
+
+    print("Testing map...")
+    assert head.map(lambda x: x * 2).equals(LinkedListNode.from_list([10, 14, 2, -8, 12, -6, 10 ,4]))
+    assert head.map(lambda x: x).equals(reference)
+    assert head.map(lambda x: x * x).equals(LinkedListNode.from_list([25, 49, 1, 16, 36, 9, 25, 4]))
+    pass
+
+    print("Testing filter...")
+    assert head.filter(lambda x: x % 2 == 0).equals(LinkedListNode.from_list([-4, 6, 2]))
+    assert head.filter(lambda x: x == 0).equals(LinkedListNode(None, None))
+    assert head.filter(lambda x: x != 100).equals(reference)
+    pass
+
+    print("Testing fold...")
+    assert head.fold(lambda x, y: x + y, 0) == 19
+    assert head.fold(lambda x, y: x * y, 1) == 25200
+    assert head.fold(lambda x, y: str(x) + str(y), '') == "571-46-352"
+    pass
+
+    print("Testing delete...")
+    head = LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5, 2])
+    assert head.delete(0).equals(LinkedListNode.from_list([7, 1, -4, 6, -3, 5 ,2]))
+
+    head = LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5, 2])
+    assert head.delete(2).equals(LinkedListNode.from_list([5, 7, -4, 6, -3, 5, 2]))
+
+    head = LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5, 2])
+    assert head.delete(7).equals(LinkedListNode.from_list([5, 7, 1, -4, 6, -3, 5]))
+
+    try: head.delete(8)
+    except IndexError: pass
+    head = LinkedListNode(5, LinkedListNode(7, LinkedListNode(1, LinkedListNode(-4))))
+    try: head.delete(4)
+    except IndexError: pass
 
 
-
-head = LinkedListNode(5, LinkedListNode(7, LinkedListNode(1, LinkedListNode(-4))))
-head = head.insert(0, 6)
-head = head.insert(5, 8)
-
-f = lambda x: x * 2
-p = lambda x: x % 2 == 0
-
-head = self 
-
-print(head)
 pass
-
-
-
 
 
         
